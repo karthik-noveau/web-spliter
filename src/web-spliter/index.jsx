@@ -1,9 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./styles.module.css";
 
+const LOCAL_STORAGE_KEYS = {
+  LEFT_URL: "webSplitter_leftUrl",
+  RIGHT_URL: "webSplitter_rightUrl",
+  DIVIDER: "webSplitter_dividerPosition",
+};
+
 export default function WebSplitter() {
-  const [leftUrl, setLeftUrl] = useState("https://about.google");
-  const [rightUrl, setRightUrl] = useState("https://about.google");
+  const [leftUrl, setLeftUrl] = useState(
+    () =>
+      localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_URL) ||
+      "https://about.google"
+  );
+  const [rightUrl, setRightUrl] = useState(
+    () =>
+      localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_URL) ||
+      "https://about.google"
+  );
   const [dividerPosition, setDividerPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -56,6 +70,21 @@ export default function WebSplitter() {
     },
     [handleMouseMove, handleMouseUp]
   );
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.LEFT_URL, leftUrl);
+  }, [leftUrl]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.RIGHT_URL, rightUrl);
+  }, [rightUrl]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.DIVIDER,
+      dividerPosition.toString()
+    );
+  }, [dividerPosition]);
 
   useEffect(() => {
     return () => {
