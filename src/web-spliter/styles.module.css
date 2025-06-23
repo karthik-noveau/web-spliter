@@ -1,0 +1,78 @@
+:global(body) {
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+.sideWrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  will-change: width;
+}
+
+.header {
+  padding: 5px 10px;
+  background: #f8f8f8;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.urlInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+.urlInput:focus {
+  outline: 1px solid #b9b9b9;
+}
+
+.iframe {
+  flex: 1;
+  border: none;
+  height: calc(100% - 50px);
+  will-change: width; /* Hint to browser for optimization */
+  transition: width 0.05s ease-out; /* Smoother resize animation */
+}
+
+.divider {
+  width: 2px;
+  background: #ccc;
+  cursor: col-resize;
+  height: 100%;
+  position: relative;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.divider:hover,
+.divider.dragging {
+  background: #999;
+}
+
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 28px;
+  background: #1b73e8;
+  border-radius: 33px;
+}
+
+.divider.dragging::after {
+  background: #333;
+}
+
+/* google doc override */
+
