@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import styles from "./styles.module.css";
 
 const LOCAL_STORAGE_KEYS = {
@@ -7,49 +7,113 @@ const LOCAL_STORAGE_KEYS = {
   DIVIDER: "webSplitter_dividerPosition",
 };
 
+// Header component for each side
+const Header = memo(({ inputValue, setInputValue, setUrl }) => {
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      setUrl(inputValue);
+    }
+  };
+
+  return (
+    <div className={styles.header}>
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Enter URL and press Enter (Note: YouTube, Facebook block iframes)"
+        className={styles.urlInput}
+      />
+    </div>
+  );
+});
+Header.displayName = 'Header';
+
+// Iframe renderer component for each side
+const URLRenderer = memo(({ url, iframeRef }) => {
+  return (
+    <div className={styles.iframeContainer}>
+      <iframe
+        ref={iframeRef}
+        src={url}
+        title="Web Preview"
+        className={styles.iframe}
+        frameBorder="0"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-storage-access-by-user-activation allow-top-navigation allow-downloads allow-modals"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      />
+    </div>
+  );
+});
+URLRenderer.displayName = 'URLRenderer';
+
+// Wrapper component for each side
+const Wrapper = memo(({ children, wrapperRef }) => (
+  <div
+    ref={wrapperRef}
+    className={styles.sideWrapper}
+  >
+    {children}
+  </div>
+));
+Wrapper.displayName = 'Wrapper';
+
 export default function WebSplitter() {
   const [leftUrl, setLeftUrl] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_URL) ||
-      "https://about.google"
+      "https://example.com"
   );
   const [rightUrl, setRightUrl] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_URL) ||
-      "https://about.google"
+      "https://example.com"
   );
-  const [dividerPosition, setDividerPosition] = useState(50);
+  const [leftInputValue, setLeftInputValue] = useState(
+    () =>
+      localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_URL) ||
+      "https://example.com"
+  );
+  const [rightInputValue, setRightInputValue] = useState(
+    () =>
+      localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_URL) ||
+      "https://example.com"
+  );
+  const [dividerPosition, setDividerPosition] = useState(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.DIVIDER);
+    return saved ? parseFloat(saved) : 50;
+  });
   const [isDragging, setIsDragging] = useState(false);
 
   const containerRef = useRef(null);
   const leftIframeRef = useRef(null);
   const rightIframeRef = useRef(null);
-  const requestRef = useRef();
+  const leftWrapperRef = useRef(null);
+  const rightWrapperRef = useRef(null);
+  const dragPositionRef = useRef(dividerPosition);
 
-  // Use requestAnimationFrame for smooth dragging
-  const animateDivider = useCallback((position) => {
-    if (leftIframeRef.current && rightIframeRef.current) {
-      leftIframeRef.current.style.width = `${position}%`;
-      rightIframeRef.current.style.width = `${100 - position}%`;
+  // Update widths using refs for smooth dragging without re-renders
+  const updateDividerPosition = useCallback((position) => {
+    if (leftWrapperRef.current && rightWrapperRef.current) {
+      leftWrapperRef.current.style.width = `${position}%`;
+      rightWrapperRef.current.style.width = `${100 - position}%`;
     }
-    requestRef.current = requestAnimationFrame(() => {});
+    dragPositionRef.current = position;
   }, []);
 
   const handleMouseMove = useCallback(
     (e) => {
-      if (!containerRef.current || !isDragging) return;
+      if (!containerRef.current) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       const percent = ((e.clientX - rect.left) / rect.width) * 100;
       const newPosition = Math.max(10, Math.min(90, percent));
 
-      // Update visual position immediately
-      animateDivider(newPosition);
-
-      // Debounce state update to prevent excessive re-renders
-      setDividerPosition(newPosition);
+      // Update visual position immediately using refs (no re-render)
+      updateDividerPosition(newPosition);
     },
-    [isDragging, animateDivider]
+    [updateDividerPosition]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -57,7 +121,15 @@ export default function WebSplitter() {
     document.body.style.cursor = "";
     document.removeEventListener("mousemove", handleMouseMove);
     document.removeEventListener("mouseup", handleMouseUp);
-    cancelAnimationFrame(requestRef.current);
+
+    // Update state only once at the end for localStorage persistence
+    setDividerPosition(dragPositionRef.current);
+
+    // Re-enable pointer events on iframes
+    if (leftIframeRef.current && rightIframeRef.current) {
+      leftIframeRef.current.style.pointerEvents = "";
+      rightIframeRef.current.style.pointerEvents = "";
+    }
   }, [handleMouseMove]);
 
   const startDragging = useCallback(
@@ -65,18 +137,36 @@ export default function WebSplitter() {
       e.preventDefault();
       setIsDragging(true);
       document.body.style.cursor = "col-resize";
+
+      // Disable pointer events on iframes during drag to prevent interference
+      if (leftIframeRef.current && rightIframeRef.current) {
+        leftIframeRef.current.style.pointerEvents = "none";
+        rightIframeRef.current.style.pointerEvents = "none";
+      }
+
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
     [handleMouseMove, handleMouseUp]
   );
 
+  // Initialize wrapper widths on mount
+  useEffect(() => {
+    if (leftWrapperRef.current && rightWrapperRef.current) {
+      leftWrapperRef.current.style.width = `${dividerPosition}%`;
+      rightWrapperRef.current.style.width = `${100 - dividerPosition}%`;
+      dragPositionRef.current = dividerPosition;
+    }
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.LEFT_URL, leftUrl);
+    setLeftInputValue(leftUrl);
   }, [leftUrl]);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.RIGHT_URL, rightUrl);
+    setRightInputValue(rightUrl);
   }, [rightUrl]);
 
   useEffect(() => {
@@ -90,54 +180,20 @@ export default function WebSplitter() {
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
-      cancelAnimationFrame(requestRef.current);
     };
   }, [handleMouseMove, handleMouseUp]);
-
-  // Header component for each side
-  const Header = ({ url, setUrl }) => (
-    <div className={styles.header}>
-      <input
-        type="text"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="Enter URL"
-        className={styles.urlInput}
-      />
-    </div>
-  );
-
-  // Iframe renderer component for each side
-  const URLRenderer = ({ url, width, iframeRef }) => (
-    <iframe
-      ref={iframeRef}
-      src={url}
-      title="Web Preview"
-      className={styles.iframe}
-      style={{ width: `${width}%` }}
-      frameBorder="0"
-    />
-  );
-
-  // Wrapper component for each side
-  const Wrapper = ({ children, side }) => (
-    <div
-      className={styles.sideWrapper}
-      style={{
-        width:
-          side === "left" ? `${dividerPosition}%` : `${100 - dividerPosition}%`,
-      }}
-    >
-      {children}
-    </div>
-  );
 
   return (
     <div className={styles.container} ref={containerRef}>
       {/* Left side */}
-      <Wrapper side="left">
-        <Header url={leftUrl} setUrl={setLeftUrl} />
-        <URLRenderer url={leftUrl} width={100} iframeRef={leftIframeRef} />
+      <Wrapper key="left-wrapper" wrapperRef={leftWrapperRef}>
+        <Header
+          key="left-header"
+          inputValue={leftInputValue}
+          setInputValue={setLeftInputValue}
+          setUrl={setLeftUrl}
+        />
+        <URLRenderer key="left-iframe" url={leftUrl} iframeRef={leftIframeRef} />
       </Wrapper>
 
       {/* Divider */}
@@ -147,9 +203,14 @@ export default function WebSplitter() {
       />
 
       {/* Right side */}
-      <Wrapper side="right">
-        <Header url={rightUrl} setUrl={setRightUrl} />
-        <URLRenderer url={rightUrl} width={100} iframeRef={rightIframeRef} />
+      <Wrapper key="right-wrapper" wrapperRef={rightWrapperRef}>
+        <Header
+          key="right-header"
+          inputValue={rightInputValue}
+          setInputValue={setRightInputValue}
+          setUrl={setRightUrl}
+        />
+        <URLRenderer key="right-iframe" url={rightUrl} iframeRef={rightIframeRef} />
       </Wrapper>
     </div>
   );

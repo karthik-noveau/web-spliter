@@ -14,7 +14,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  will-change: width;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .header {
@@ -23,6 +24,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .urlInput {
@@ -35,12 +37,20 @@
   outline: 1px solid #b9b9b9;
 }
 
+.iframeContainer {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
 .iframe {
   flex: 1;
   border: none;
-  height: calc(100% - 50px);
-  will-change: width; /* Hint to browser for optimization */
-  transition: width 0.05s ease-out; /* Smoother resize animation */
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .divider {
