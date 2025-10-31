@@ -1,7 +1,36 @@
 {
   "name": "web-spliter",
+  "version": "1.0.0",
+  "description": "Web-Spliter by Skynoveau Technology - Professional split-screen browser tool for developers, designers, and multitaskers. Compare websites side-by-side with smooth drag-and-drop interface.",
+  "author": "Skynoveau Technology <contact@skynoveau.com>",
+  "homepage": "https://skynoveau.com/web-spliter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skynoveau/web-spliter"
+  },
+  "bugs": {
+    "url": "https://github.com/skynoveau/web-spliter/issues",
+    "email": "support@skynoveau.com"
+  },
+  "keywords": [
+    "web-spliter",
+    "split-screen",
+    "browser-tool",
+    "skynoveau",
+    "skynoveau-technology",
+    "side-by-side-browser",
+    "dual-browser",
+    "website-comparison",
+    "web-developer-tools",
+    "productivity-tool",
+    "react",
+    "vite",
+    "iframe-tool",
+    "responsive-design",
+    "frontend-development"
+  ],
+  "license": "MIT",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
