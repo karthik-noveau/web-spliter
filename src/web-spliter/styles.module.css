@@ -4,8 +4,8 @@
 
 .container {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  height: calc(100vh - 15px);
+  width: calc(100vw - 10px);
   position: relative;
 }
 
@@ -54,35 +54,108 @@
 }
 
 .divider {
-  width: 2px;
-  background: #ccc;
+  width: 10px;
+  background: transparent;
   cursor: col-resize;
   height: 100%;
   position: relative;
-  transition: background 0.2s;
   user-select: none;
+  flex-shrink: 0;
 }
 
-.divider:hover,
-.divider.dragging {
+/* Visual line */
+.dividerLine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background: #ccc;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.divider:hover .dividerLine {
   background: #999;
 }
 
-.divider::after {
-  content: "";
+.divider.dragging .dividerLine {
+  background: #999;
+}
+
+/* Handle */
+.dividerHandle {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
-  height: 28px;
-  background: #1b73e8;
+  height: 30px;
+  background: linear-gradient(to right, #2563eb, #4f46e5);
   border-radius: 33px;
+  transition: all 0.3s ease;
+  pointer-events: none;
 }
 
-.divider.dragging::after {
-  background: #333;
+.divider:hover .dividerHandle {
+  height: 40px;
+  width: 4px;
+  background: linear-gradient(to right, #2563eb, #4f46e5);
+}
+
+.divider.dragging .dividerHandle {
+  height: 50px;
+}
+
+/* Hint icon */
+.dividerHint {
+  position: absolute;
+  top: calc(50% - 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #1b73e8;
+  background: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.divider:hover .dividerHint {
+  opacity: 1;
+}
+
+/* Swap Button */
+.swapButton {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(to right, #2563eb, #4f46e5);
+  color: white;
+  border: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.divider:hover .swapButton {
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* google doc override */
-

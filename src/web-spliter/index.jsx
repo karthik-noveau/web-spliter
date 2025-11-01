@@ -7,11 +7,50 @@ const LOCAL_STORAGE_KEYS = {
   DIVIDER: "webSplitter_dividerPosition",
 };
 
+// Smart URL/Search processor - works like a real browser
+const processInput = (input) => {
+  if (!input || !input.trim()) return input;
+
+  const trimmed = input.trim();
+
+  // Check if it already has a protocol
+  if (trimmed.match(/^(https?|ftp):\/\//i)) {
+    return trimmed;
+  }
+
+  // Check if it looks like a URL (has domain extension)
+  const urlPattern = /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/;
+  const hasSpaces = /\s/.test(trimmed);
+  const hasDot = /\./.test(trimmed);
+
+  // If it has spaces, treat as search query
+  if (hasSpaces) {
+    return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+  }
+
+  // If it looks like a domain (has dot and matches pattern), add https://
+  if (hasDot && urlPattern.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  // If it's a single word without dots, could be:
+  // - localhost
+  // - search term
+  if (trimmed === "localhost" || trimmed.startsWith("localhost:")) {
+    return `http://${trimmed}`;
+  }
+
+  // Otherwise treat as search query
+  return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+};
+
 // Header component for each side
 const Header = memo(({ inputValue, setInputValue, setUrl }) => {
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      setUrl(inputValue);
+    if (e.key === "Enter") {
+      const processedUrl = processInput(inputValue);
+      setUrl(processedUrl);
+      setInputValue(processedUrl); // Update input to show processed URL
     }
   };
 
@@ -22,13 +61,13 @@ const Header = memo(({ inputValue, setInputValue, setUrl }) => {
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Enter URL and press Enter (Note: YouTube, Facebook block iframes)"
+        placeholder="Search or enter URL"
         className={styles.urlInput}
       />
     </div>
   );
 });
-Header.displayName = 'Header';
+Header.displayName = "Header";
 
 // Iframe renderer component for each side
 const URLRenderer = memo(({ url, iframeRef }) => {
@@ -39,46 +78,43 @@ const URLRenderer = memo(({ url, iframeRef }) => {
         src={url}
         title="Web Preview"
         className={styles.iframe}
-        frameBorder="0"
-        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-storage-access-by-user-activation allow-top-navigation allow-downloads allow-modals"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="no-referrer"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
       />
     </div>
   );
 });
-URLRenderer.displayName = 'URLRenderer';
+URLRenderer.displayName = "URLRenderer";
 
 // Wrapper component for each side
 const Wrapper = memo(({ children, wrapperRef }) => (
-  <div
-    ref={wrapperRef}
-    className={styles.sideWrapper}
-  >
+  <div ref={wrapperRef} className={styles.sideWrapper}>
     {children}
   </div>
 ));
-Wrapper.displayName = 'Wrapper';
+Wrapper.displayName = "Wrapper";
 
 export default function WebSplitter() {
   const [leftUrl, setLeftUrl] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_URL) ||
-      "https://example.com"
+      "https://about.google.com"
   );
   const [rightUrl, setRightUrl] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_URL) ||
-      "https://example.com"
+      "https://blog.google/intl/en-in/"
   );
   const [leftInputValue, setLeftInputValue] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_URL) ||
-      "https://example.com"
+      "https://about.google.com"
   );
   const [rightInputValue, setRightInputValue] = useState(
     () =>
       localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_URL) ||
-      "https://example.com"
+      "https://blog.google/intl/en-in/"
   );
   const [dividerPosition, setDividerPosition] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.DIVIDER);
@@ -150,6 +186,25 @@ export default function WebSplitter() {
     [handleMouseMove, handleMouseUp]
   );
 
+  const handleDividerDoubleClick = useCallback(() => {
+    // Center the divider at 50%
+    const centerPosition = 50;
+    updateDividerPosition(centerPosition);
+    setDividerPosition(centerPosition);
+  }, [updateDividerPosition]);
+
+  const handleSwap = useCallback(() => {
+    // Swap URLs only (keep divider position unchanged)
+    const tempUrl = leftUrl;
+    setLeftUrl(rightUrl);
+    setRightUrl(tempUrl);
+
+    // Swap input values
+    const tempInput = leftInputValue;
+    setLeftInputValue(rightInputValue);
+    setRightInputValue(tempInput);
+  }, [leftUrl, rightUrl, leftInputValue, rightInputValue]);
+
   // Initialize wrapper widths on mount
   useEffect(() => {
     if (leftWrapperRef.current && rightWrapperRef.current) {
@@ -193,14 +248,33 @@ export default function WebSplitter() {
           setInputValue={setLeftInputValue}
           setUrl={setLeftUrl}
         />
-        <URLRenderer key="left-iframe" url={leftUrl} iframeRef={leftIframeRef} />
+        <URLRenderer
+          key="left-iframe"
+          url={leftUrl}
+          iframeRef={leftIframeRef}
+        />
       </Wrapper>
 
       {/* Divider */}
       <div
         className={`${styles.divider} ${isDragging ? styles.dragging : ""}`}
         onMouseDown={startDragging}
-      />
+        onDoubleClick={handleDividerDoubleClick}
+        title="Double-click to center"
+      >
+        <div className={styles.dividerLine} title="Double-click to center" />
+        <div className={styles.dividerHandle} />
+        <button
+          className={styles.swapButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSwap();
+          }}
+          title="Swap URLs"
+        >
+          ⇆
+        </button>
+      </div>
 
       {/* Right side */}
       <Wrapper key="right-wrapper" wrapperRef={rightWrapperRef}>
@@ -210,7 +284,11 @@ export default function WebSplitter() {
           setInputValue={setRightInputValue}
           setUrl={setRightUrl}
         />
-        <URLRenderer key="right-iframe" url={rightUrl} iframeRef={rightIframeRef} />
+        <URLRenderer
+          key="right-iframe"
+          url={rightUrl}
+          iframeRef={rightIframeRef}
+        />
       </Wrapper>
     </div>
   );
